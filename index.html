@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Civic Weather Engine</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Custom component styles -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Civic Weather Engine Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Storm Emergency Banner -->
+  <div id="stormBanner"
+    class="hidden sticky top-0 z-[60] bg-danger text-white py-2 px-4 text-center font-black uppercase tracking-[0.2em] text-sm animate-pulse border-b border-white/20">
+    CIVIC STORM ALERT: HIGH SERVICE PRESSURE DETECTED
+  </div>
+
+  <!-- Storm Escalation Overlay (full-screen red radial fill) -->
+  <div id="stormOverlay" class="storm-overlay"></div>
+
+  <div id="mainWrapper" class="transition-all duration-700">
+
+    <!-- BEGIN: TopAppHeader (Station Identity) -->
+    <header
+      class="sticky top-0 z-50 bg-dark/80 backdrop-blur-md border-b border-dark-border px-4 py-3 flex items-center justify-between"
+      data-purpose="top-header">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-8 h-8 rounded-full bg-brand/10 border border-brand/30 flex items-center justify-center text-brand animate-pulse">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-sm tracking-widest uppercase">Civic Weather Station</h1>
+          <p class="text-[10px] text-brand/60 uppercase tracking-widest font-bold">Atmospheric Monitoring Console</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div id="statusBadge"
+          class="px-2 py-1 bg-dark-surface border border-brand/30 rounded text-[10px] font-bold tracking-widest text-brand animate-pulse">
+          SYNCING...</div>
+        <button id="helpBtn"
+          class="w-8 h-8 rounded-full bg-dark-surface border border-dark-border flex items-center justify-center text-white/40 hover:text-brand hover:border-brand/30 transition-colors"
+          title="Tutorial / Help">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </button>
+        <button id="settingsBtn"
+          class="w-8 h-8 rounded-full bg-dark-surface border border-dark-border flex items-center justify-center text-white/40 hover:text-brand hover:border-brand/30 transition-colors"
+          title="Settings">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+            </path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+            </path>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <!-- END: TopAppHeader -->
+
+    <!-- Hero Tagline: 3-second value proposition -->
+    <div class="text-center py-3 px-4">
+      <p class="text-[11px] text-white/30 uppercase tracking-[0.25em] font-bold">
+        Real-time municipal intelligence · Powered by open civic data
+      </p>
+    </div>
+
+    <main class="max-w-md mx-auto pt-6 space-y-8">
+
+      <!-- ZONE 1: TOP - Current Civic Climate -->
+      <section class="px-4 text-center" data-purpose="primary-score">
+        <div class="relative inline-block mb-2">
+          <div class="absolute inset-0 bg-brand/10 blur-3xl rounded-full"></div>
+          <div
+            class="relative text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-white/40 leading-none"
+            style="text-shadow: 0 0 40px rgba(0,255,64,0.1);">
+            <span id="climateScore">--</span>
+          </div>
+        </div>
+        <p class="text-[10px] text-brand/80 font-bold uppercase tracking-[0.3em] mb-4">Climate Index</p>
+        <div class="min-h-[3rem] flex items-center justify-center">
+          <p id="explanation" class="text-xs text-white/50 italic leading-relaxed max-w-[280px]">
+            Calibrating atmospheric sensors...
+          </p>
+        </div>
+      </section>
+
+      <!-- ZONE 2: CENTER - Radar Map / System Activity -->
+      <section class="px-4">
+        <!-- Meteo-Style Radar Display -->
+        <div
+          class="bg-dark-surface p-1 border border-dark-border rounded-full aspect-square relative overflow-hidden shadow-2xl shadow-brand/5 group">
+          <!-- Radar Grid Lines (Concentric Rings) -->
+          <div class="absolute inset-0 border-[0.5px] border-brand/10 rounded-full scale-[0.25]"></div>
+          <div class="absolute inset-0 border-[0.5px] border-brand/10 rounded-full scale-[0.5]"></div>
+          <div class="absolute inset-0 border-[0.5px] border-brand/10 rounded-full scale-[0.75]"></div>
+          <div class="absolute inset-0 border-[0.5px] border-brand/10 rounded-full"></div>
+          <!-- Axis Cross -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="w-full h-[0.5px] bg-brand/5"></div>
+            <div class="h-full w-[0.5px] bg-brand/5 absolute"></div>
+          </div>
+
+          <!-- The Radar Sweep -->
+          <div class="radar-sweep"></div>
+
+          <!-- Radar Content (Points Rendered Here) -->
+          <div id="radarContainer" class="absolute inset-0 z-10 p-4">
+            <canvas id="radarChart" class="w-full h-full opacity-60"></canvas>
+          </div>
+
+          <!-- Scanline Overlay -->
+          <div
+            class="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[length:100%_4px,3px_100%] z-20 opacity-20">
+          </div>
+        </div>
+
+        <!-- Atmospheric Indicators (Instrument Gauges) -->
+        <div class="grid grid-cols-3 gap-2 mt-6">
+          <!-- Civic Pressure (Complaints) -->
+          <div
+            class="bg-dark-surface/50 border border-dark-border p-3 rounded-lg text-center hover:bg-dark-surface transition-colors">
+            <div class="text-[8px] text-white/40 uppercase tracking-widest mb-1">Civic Pressure</div>
+            <div class="text-xl font-bold text-brand" id="gaugeFrictionValue">--</div>
+            <div class="w-full bg-dark-border h-[2px] mt-2 relative overflow-hidden rounded-full">
+              <div class="absolute inset-y-0 left-0 bg-brand/40" style="width: 0%;" id="barFriction"></div>
+            </div>
+          </div>
+          <!-- Response Winds (Resolution Time) -->
+          <div
+            class="bg-dark-surface/50 border border-dark-border p-3 rounded-lg text-center hover:bg-dark-surface transition-colors">
+            <div class="text-[8px] text-white/40 uppercase tracking-widest mb-1">Response Winds</div>
+            <div class="text-xl font-bold text-brand" id="gaugeResponseValue">--</div>
+            <div class="w-full bg-dark-border h-[2px] mt-2 relative overflow-hidden rounded-full">
+              <div class="absolute inset-y-0 left-0 bg-brand/40" style="width: 0%;" id="barResponse"></div>
+            </div>
+          </div>
+          <!-- Urban Growth (Permits) -->
+          <div
+            class="bg-dark-surface/50 border border-dark-border p-3 rounded-lg text-center hover:bg-dark-surface transition-colors">
+            <div class="text-[8px] text-white/40 uppercase tracking-widest mb-1">Urban Growth</div>
+            <div class="text-xl font-bold text-brand" id="gaugeGrowthValue">--</div>
+            <div class="w-full bg-dark-border h-[2px] mt-2 relative overflow-hidden rounded-full">
+              <div class="absolute inset-y-0 left-0 bg-brand/40" style="width: 0%;" id="barGrowth"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZONE 3: BOTTOM - Forecast Timeline + Storm Alerts -->
+      <section class="px-4 pb-12 space-y-6">
+        <!-- Storm Replay System -->
+        <div class="panel bg-dark-surface/80">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-[10px] font-bold uppercase tracking-widest text-brand">Storm Replay</h2>
+              <div class="flex items-center gap-2 mt-1">
+                <span id="timelineLabel" class="text-xs text-white/40 font-mono">--</span>
+                <span class="text-white/20">•</span>
+                <span id="currentConditionLabel"
+                  class="text-[10px] font-bold text-brand uppercase tracking-wider">CALIBRATING...</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <button id="playPauseBtn"
+                class="px-6 py-2 bg-[#00ff40]/20 border border-[#00ff40]/50 text-[#00ff40] rounded-sm hover:bg-[#00ff40]/30 transition-all font-mono text-sm uppercase tracking-wider">Play</button>
+              <button id="demoModeBtn"
+                class="px-6 py-2 bg-blue-500/20 border border-blue-400/50 text-blue-400 rounded-sm hover:bg-blue-500/30 transition-all font-mono text-sm uppercase tracking-wider">Simulate
+                Civic Storm</button>
+            </div>
+          </div>
+
+          <div class="relative px-2">
+            <input type="range" id="timelineSlider"
+              class="w-full accent-brand bg-dark-border h-1 rounded-full appearance-none cursor-pointer" min="0" max="0"
+              value="0">
+          </div>
+
+          <div id="forecastStrip" class="flex gap-2 overflow-x-auto mt-6 hide-scrollbar">
+            <!-- Rendered by JS: Weather Icons / Future States -->
+          </div>
+        </div>
+
+        <!-- Storm Alerts -->
+        <div id="stormAlertCard"
+          class="bg-danger/5 border border-danger/20 rounded-lg p-4 relative overflow-hidden hidden-card">
+          <div class="absolute top-0 left-0 w-1 h-full bg-danger"></div>
+          <h3 id="stormAlertTitle"
+            class="text-danger font-bold text-[10px] uppercase tracking-[0.2em] mb-1 flex items-center justify-between">
+            <span class="flex items-center gap-2"><span class="animate-pulse">⚠</span> ALERT</span>
+            <span id="stormIntensityLabel" class="text-[8px] opacity-60">CRITICAL</span>
+          </h3>
+          <p id="stormAlertText" class="text-xs text-white/60 leading-relaxed mb-4"></p>
+
+          <div id="stormMetrics" class="grid grid-cols-2 gap-4 border-t border-danger/10 pt-3 mt-3">
+            <div class="text-center">
+              <div class="text-[8px] text-white/40 uppercase mb-1">Pressure Shift</div>
+              <div id="stormMetricComplaints" class="text-sm font-bold text-danger">--</div>
+            </div>
+            <div class="text-center">
+              <div class="text-[8px] text-white/40 uppercase mb-1">Response Delay</div>
+              <div id="stormMetricResponse" class="text-sm font-bold text-danger">--</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZONE 4: Bright Data Crawl Runner -->
+      <section class="px-4 pb-8">
+        <div class="panel bg-dark-surface/80" id="crawlRunnerPanel">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-[10px] font-bold uppercase tracking-widest text-brand">Crawl Runner</h2>
+              <p class="text-[8px] text-white/30 uppercase tracking-wider mt-1">Bright Data · Dev / Single-user Mode</p>
+            </div>
+            <div id="crawlStatusBadge"
+              class="px-2 py-1 bg-dark-surface border border-dark-border rounded text-[8px] font-bold tracking-widest text-white/40">
+              IDLE</div>
+          </div>
+
+          <textarea id="crawlUrlInput" class="bd-input w-full mb-3" rows="3"
+            placeholder="Enter URLs to crawl (one per line)&#10;https://example.com&#10;https://another.com"></textarea>
+
+          <div class="flex items-center gap-2 mb-4">
+            <button id="runCrawlBtn" class="bd-btn-primary">Run Crawl</button>
+            <button id="cancelCrawlBtn" class="bd-btn-danger" disabled>Cancel</button>
+          </div>
+
+          <!-- Progress -->
+          <div id="crawlProgressSection" class="hidden mb-4">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[8px] text-white/40 uppercase tracking-widest">Progress</span>
+              <span id="crawlSnapshotId" class="text-[8px] text-brand/60 font-mono"></span>
+            </div>
+            <div class="bd-progress">
+              <div id="crawlProgressBar" class="bd-progress-fill"></div>
+            </div>
+            <p id="crawlStatusText" class="text-[9px] text-white/40 mt-1 font-mono"></p>
+          </div>
+
+          <!-- Output -->
+          <div id="crawlOutputSection" class="hidden">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[8px] text-white/40 uppercase tracking-widest">Output</span>
+              <button id="downloadOutputBtn"
+                class="text-[8px] text-brand/60 hover:text-brand transition-colors uppercase tracking-wider">Download</button>
+            </div>
+            <pre id="crawlOutput" class="bd-output"></pre>
+          </div>
+
+          <!-- Diagnostics -->
+          <details class="mt-4">
+            <summary
+              class="text-[8px] text-white/30 uppercase tracking-widest cursor-pointer hover:text-white/50 transition-colors">
+              Diagnostics</summary>
+            <div id="bdDiagnostics" class="bd-diagnostics mt-2">
+              <table class="w-full">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Method</th>
+                    <th>Endpoint</th>
+                    <th>Status</th>
+                    <th>Ms</th>
+                  </tr>
+                </thead>
+                <tbody id="bdDiagnosticsBody"></tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================= -->
+  <!-- SETTINGS MODAL -->
+  <!-- ============================= -->
+  <div id="settingsModal" class="bd-modal hidden">
+    <div class="bd-modal-backdrop"></div>
+    <div class="bd-modal-card">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-sm font-bold tracking-widest uppercase text-brand">Settings</h2>
+          <p class="text-[8px] text-white/30 uppercase tracking-wider mt-1">Bright Data Integration</p>
+        </div>
+        <button id="closeSettingsBtn"
+          class="w-8 h-8 rounded-full bg-dark-surface border border-dark-border flex items-center justify-center text-white/40 hover:text-danger hover:border-danger/30 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <!-- API Key -->
+        <div>
+          <label class="bd-label">API Key</label>
+          <div class="relative">
+            <input type="password" id="bdApiKey" class="bd-input w-full pr-10"
+              placeholder="Enter your Bright Data API key" value="9cc4f97d-c26a-4156-89b7-c60f2d94a5f4">
+            <button id="toggleApiKeyBtn"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors text-[10px] uppercase tracking-wider">Show</button>
+          </div>
+        </div>
+
+        <!-- Dataset ID -->
+        <div>
+          <label class="bd-label">Dataset / Crawler ID</label>
+          <input type="text" id="bdDatasetId" class="bd-input w-full" placeholder="e.g. j_mmi8bxp81yo8kgj86j"
+            value="j_mmi8bxp81yo8kgj86j">
+        </div>
+
+        <!-- Output Fields -->
+        <div>
+          <label class="bd-label">Output Fields <span class="text-white/20">(pipe-separated)</span></label>
+          <input type="text" id="bdOutputFields" class="bd-input w-full" placeholder="markdown|html|ld_json"
+            value="markdown">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Download Format -->
+          <div>
+            <label class="bd-label">Download Format</label>
+            <select id="bdDownloadFormat" class="bd-select w-full">
+              <option value="json" selected>JSON</option>
+              <option value="ndjson">NDJSON</option>
+              <option value="jsonl">JSONL</option>
+              <option value="csv">CSV</option>
+            </select>
+          </div>
+
+          <!-- Include Errors -->
+          <div>
+            <label class="bd-label">Include Errors</label>
+            <div class="flex items-center gap-2 mt-2">
+              <input type="checkbox" id="bdIncludeErrors" checked class="bd-checkbox">
+              <span class="text-[9px] text-white/40">Capture error rows</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Label -->
+        <div class="bg-warning/5 border border-warning/20 rounded-lg p-3">
+          <p class="text-[8px] text-warning/80 uppercase tracking-wider font-bold">⚠ Dev / Single-user Mode</p>
+          <p class="text-[8px] text-white/30 mt-1">API key is stored in localStorage. For production, use a server
+            proxy.</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 mt-6 pt-4 border-t border-dark-border">
+        <button id="bdSaveBtn" class="bd-btn-primary flex-1">Save</button>
+        <button id="bdTestBtn" class="bd-btn-secondary">Test</button>
+        <button id="bdClearBtn" class="bd-btn-ghost">Clear Key</button>
+      </div>
+
+      <!-- Test Result -->
+      <div id="bdTestResult" class="hidden mt-3 p-2 rounded-lg text-[9px] font-mono"></div>
+    </div>
+  </div>
+
+  <script src="tutorial.js"></script>
+  <script src="brightdata.js"></script>
+  <script src="app.js"></script>
+
+</body>
+
+</html>
